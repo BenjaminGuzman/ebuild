@@ -22,11 +22,10 @@
   `cjson` (v1.7.18), `nanopb` (v0.4.9.1), `lvgl` (v9.2.2), `tinyusb` (v0.18.0), and `unity` (v2.6.1).
 
 ### Fixed
-- **Ninja object paths retain source extensions.** Sources such as
-  `src/start.c` and `src/start.S` now generate distinct objects under
-  `obj/<target>/` (`start.c.o` and `start.S.o`) instead of colliding at
-  `start.o`. Clean existing build directories once after upgrading so static
-  archives cannot retain objects named by the previous layout.
+- **Ninja shared-library sources compile as position-independent code.**
+  Shared-library targets now default to `-fPIC`, while preserving an explicit
+  PIC policy supplied by the target or toolchain
+  (`ebuild/build/ninja_backend.py`).
 - **`ebuild test` now finds Windows test binaries.** The Ninja edge for a
   native `type: test` target already carried the platform suffix
   (`_exe_suffix()` names it `<name>.exe` on Windows), but `ebuild test`
