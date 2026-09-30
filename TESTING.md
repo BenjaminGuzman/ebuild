@@ -69,17 +69,13 @@ and marked `NOT RUN` or `UNKNOWN` per [VERIFY.md](./VERIFY.md).
 
 ## Static-library source removal regression
 
-Run `python -m pytest tests/unit/test_ninja_backend.py::TestStaticArchiveRecreation -v`.
+Run `python -m pytest tests/ebuild/test_ninja_backend.py -v` to check native
+archive rebuilding. The source-removal test requires a host C compiler, `ar`,
+and the Ninja Python package. It builds a library, removes a source, and
+checks that the old object is absent and its function no longer links. It
+also verifies that retained code still links, unchanged archives are not
+rebuilt, and project paths containing spaces work. A separate test checks
+that an archiver failure makes Ninja fail.
 
-The behavioral test drives Ninja with Python stub `cc`/`ar` tools (same launcher
-pattern as `tests/unit/test_package_efw.py`), so it does not need a host C
-toolchain. The stub archiver keeps omitted members the way real `ar r` does;
-after a source is removed, the rebuilt archive must not list that object.
-
-`ar_rule` recreates the archive when its build step runs: updating an existing
-archive with `ar rcs` alone retains members removed from the source list. The
-rule invokes `recreate_archive.py` by absolute path through the generating
-Python interpreter, so Ninja needs that interpreter at build time for every
-`static_library` edge. Regenerate `build.ninja` if the environment's Python or
-the ebuild installation moves. The helper is not imported as `ebuild.*`, so a
-bare checkout that only puts the package on `PYTHONPATH` still works.
+Static archives are recreated when their build step runs: updating an existing
+archive with `ar rcs` alone retains members removed from the source list.
