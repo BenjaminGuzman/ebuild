@@ -60,6 +60,9 @@ Observed in the source tree:
 
 Requires Python 3.8+.
 
+Building a `static_library` target also invokes that Python interpreter at
+build time: the generated Ninja `ar_rule` runs a small helper to recreate the
+archive so removed object members cannot linger.
 ```bash
 pip install -e .        # from the repo root
 # or:
@@ -68,8 +71,9 @@ pip install -e .        # from the repo root
 ```
 
 Runtime dependencies (`click`, `pyyaml`, `ninja`) are installed automatically.
-Note the `ninja` **pip package** is required — a system `ninja` binary alone is
-not enough, because ebuild invokes `python -m ninja`.
+ebuild prefers a `ninja` binary on PATH and falls back to `python -m ninja`
+if none is present, so a system ninja install is enough. The pip `ninja`
+package is the fallback when no binary is on PATH.
 
 ## Usage
 
