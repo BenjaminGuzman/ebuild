@@ -323,7 +323,8 @@ def register_commands(cli_group: click.Group) -> None:
             from eosim.cli.main import _load_registry
         except ImportError as exc:  # pragma: no cover - exercised without eosim
             raise SimError("EoSim is not installed: pip install "
-                           "'eosim @ git+https://github.com/embeddedos-org/EoSim'") from exc
+                           "'embeddedos-eosim @ git+https://github.com/embeddedos-org/EoSim'"
+                           ) from exc
         entries = sorted(_load_registry().all(), key=lambda p: p.name)
         if not entries:
             raise SimError("EoSim's platform registry is empty")
