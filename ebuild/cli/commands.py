@@ -3065,3 +3065,5 @@ def _serial_ports() -> List[str]:
 # itself, so both entry points -- and anything that imports `cli` -- see
 # the same CLI.
 _register_integration_commands(cli)
+from ebuild.cli.golden_path import register_commands as _register_golden_path_commands  # noqa: E402
+_register_golden_path_commands(cli)
