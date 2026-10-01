@@ -41,7 +41,7 @@ from ebuild.core.scheduler import run_graph
 from ebuild.packages.builder import BuildError, PackageBuilder
 from ebuild.packages.cache import PackageCache
 from ebuild.packages.fetcher import FetchError, PackageFetcher
-from ebuild.packages.lockfile import Lockfile
+from ebuild.packages.lockfile import Lockfile, LockfileError
 from ebuild.packages.recipe import RecipeError
 from ebuild.packages.registry import create_registry, find_recipe_dirs
 from ebuild.packages.resolver import PackageResolver, ResolveError
@@ -156,15 +156,25 @@ def _install_packages(
     registry = create_registry(*recipe_dirs)
     log.debug(f"Registry: {registry.package_count} recipes from {[str(p) for p in registry.search_paths]}")
 
-    resolver = PackageResolver(registry)
-    requested = [{"name": p.name, "version": p.version} for p in cfg.packages]
-    resolved = resolver.resolve(requested)
-
-    log.info(f"Packages to install: {', '.join(r.name + ' v' + r.version for r in resolved)}")
-
-    # Lockfile
+    # The lockfile is read before resolving, so an unpinned package lands on
+    # the version the last resolution recorded rather than on whatever is
+    # newest now. It was only ever written before, which pinned nothing.
     lock_path = cfg.source_dir / Lockfile.FILENAME
     lockfile = Lockfile(lock_path)
+    try:
+        lockfile.load()
+    except LockfileError as e:
+        # A lock that cannot be read is a resolution the user has to settle,
+        # reported through the handler every caller of this function has.
+        raise ResolveError(str(e)) from e
+    if lockfile.package_names:
+        log.debug(f"Lockfile read: {lock_path} ({len(lockfile.package_names)} packages)")
+
+    resolver = PackageResolver(registry)
+    requested = [{"name": p.name, "version": p.version} for p in cfg.packages]
+    resolved = resolver.resolve(requested, lockfile=lockfile)
+
+    log.info(f"Packages to install: {', '.join(r.name + ' v' + r.version for r in resolved)}")
 
     # Cache and fetcher
     pkg_cache_dir = build_dir / "packages"
@@ -1104,7 +1114,8 @@ def build(log: Logger, config_path: str, build_dir: str, backend: Optional[str],
         log.success(f"Generated {_shown(build_path / 'compile_commands.json')}")
 
         log.step("Invoking ninja...")
-        ninja_cmd = [sys.executable, "-m", "ninja", "-f", str(build_path / "build.ninja")]
+        from ebuild.build.dispatch import ninja_command
+        ninja_cmd = ninja_command() + ["-f", str(build_path / "build.ninja")]
         if log.verbose:
             ninja_cmd.append("-v")
 
@@ -1956,7 +1967,15 @@ def analyze(log: Logger, input_text: Optional[str], input_file: Optional[str],
             log.info(f"  Provider: {llm_info}")
             if interpreter.llm_client.is_available():
                 profile = interpreter.analyze_with_llm(profile)
-                log.success("  LLM analysis complete")
+                if any(f.startswith("llm_analyzed:") for f in profile.features):
+                    log.success("  LLM analysis complete")
+                else:
+                    # Keep the rule-engine profile; don't print success
+                    # just because we attempted the call.
+                    log.warning(
+                        "  LLM analysis did not complete; "
+                        "continuing with the rule-engine profile"
+                    )
             else:
                 log.warning("  No LLM available. Install Ollama or set OPENAI_API_KEY.")
 
@@ -2207,7 +2226,9 @@ def new(log: Logger, project_name: str, template_name: str, board_name: str,
     log.header("ebuild — New Project")
 
     # Resolve template directory
-    templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
+    # Inside the package, so a pip-installed ebuild has them too. At the repo
+    # root they were left out of the wheel and `ebuild new` crashed on iterdir().
+    templates_dir = Path(__file__).resolve().parent.parent / "templates"
     template_dir = templates_dir / template_name
 
     if not template_dir.is_dir():
@@ -2262,6 +2283,9 @@ def new(log: Logger, project_name: str, template_name: str, board_name: str,
         "build.yaml.template": project_dir / "build.yaml",
         "eos.yaml.template": project_dir / "eos.yaml",
         "README.md.template": project_dir / "README.md",
+        # Every template's build.yaml declares a test target built from
+        # tests/test_main.c; without this file `ebuild build` fails at once.
+        "test_main.c.template": project_dir / "tests" / "test_main.c",
     }
 
     for template_file, output_path in file_mapping.items():
@@ -2274,6 +2298,7 @@ def new(log: Logger, project_name: str, template_name: str, board_name: str,
         for key, val in replacements.items():
             content = content.replace(key, val)
 
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding="utf-8")
         log.success(f"  {output_path.relative_to(parent)}")
 
@@ -3040,3 +3065,5 @@ def _serial_ports() -> List[str]:
 # itself, so both entry points -- and anything that imports `cli` -- see
 # the same CLI.
 _register_integration_commands(cli)
+from ebuild.cli.golden_path import register_commands as _register_golden_path_commands  # noqa: E402
+_register_golden_path_commands(cli)
