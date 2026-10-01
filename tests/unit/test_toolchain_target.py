@@ -33,7 +33,10 @@ def _fake_toolchain_dir(tmp: Path, name: str = "arm-none-eabi-gcc") -> Path:
     """A temp dir containing an executable compiler shim; returns the dir."""
     bindir = tmp / "fake-toolchain-bin"
     bindir.mkdir(parents=True, exist_ok=True)
-    exe = bindir / name
+    # shutil.which() on Windows only matches PATHEXT extensions (.exe, .bat,
+    # .cmd); an extensionless shebang shim is invisible to it there.
+    shim_name = name + (".bat" if os.name == "nt" else "")
+    exe = bindir / shim_name
     exe.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     exe.chmod(exe.stat().st_mode | stat.S_IEXEC)
     return bindir
