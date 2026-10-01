@@ -40,7 +40,7 @@ Observed in the source tree:
   (`ebuild new`, `ebuild generate-project`, `ebuild generate-board`,
   `ebuild generate-boot`).
 - **Layers & recipes** — reusable board/OS composition under `layers/` and
-  `recipes/`.
+  `ebuild/recipes/`.
 
 ## What's inside
 
@@ -49,8 +49,8 @@ Observed in the source tree:
 | `ebuild/` | The Python package: `cli/`, `build/`, `core/`, `system/`, `firmware/`, `deps/`, `packages/`, `plugins/`, `eos_ai/` |
 | `core/` | Native support components (e.g. `eboot/`) |
 | `examples/` | `hello_world`, `linux_image`, `multi_target`, `rtos_firmware`, `cortex_r5_safety`, `eradar360`, `with_packages` |
-| `templates/` | Project/board templates used by the generators |
-| `recipes/`, `layers/` | Reusable build recipes and board/OS layers |
+| `ebuild/templates/` | Project templates used by `ebuild new` / `ebuild init` (shipped in the wheel) |
+| `ebuild/recipes/`, `layers/` | Reusable build recipes and board/OS layers |
 | `hardware/` | Board/hardware definitions |
 | `sdk/` | SDK generation support |
 | `tools/` | Helper scripts |
