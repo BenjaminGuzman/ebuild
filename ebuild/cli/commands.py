@@ -2281,6 +2281,9 @@ def new(log: Logger, project_name: str, template_name: str, board_name: str,
         "build.yaml.template": project_dir / "build.yaml",
         "eos.yaml.template": project_dir / "eos.yaml",
         "README.md.template": project_dir / "README.md",
+        # Every template's build.yaml declares a test target built from
+        # tests/test_main.c; without this file `ebuild build` fails at once.
+        "test_main.c.template": project_dir / "tests" / "test_main.c",
     }
 
     for template_file, output_path in file_mapping.items():
@@ -2293,6 +2296,7 @@ def new(log: Logger, project_name: str, template_name: str, board_name: str,
         for key, val in replacements.items():
             content = content.replace(key, val)
 
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding="utf-8")
         log.success(f"  {output_path.relative_to(parent)}")
 
