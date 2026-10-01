@@ -2226,7 +2226,9 @@ def new(log: Logger, project_name: str, template_name: str, board_name: str,
     log.header("ebuild — New Project")
 
     # Resolve template directory
-    templates_dir = Path(__file__).resolve().parent.parent.parent / "templates"
+    # Inside the package, so a pip-installed ebuild has them too. At the repo
+    # root they were left out of the wheel and `ebuild new` crashed on iterdir().
+    templates_dir = Path(__file__).resolve().parent.parent / "templates"
     template_dir = templates_dir / template_name
 
     if not template_dir.is_dir():
@@ -3063,3 +3065,5 @@ def _serial_ports() -> List[str]:
 # itself, so both entry points -- and anything that imports `cli` -- see
 # the same CLI.
 _register_integration_commands(cli)
+from ebuild.cli.golden_path import register_commands as _register_golden_path_commands  # noqa: E402
+_register_golden_path_commands(cli)
