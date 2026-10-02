@@ -33,7 +33,9 @@ fi
 echo "Installing ebuild..."
 
 # Step 1: pip install (use user pip if available, fall back to system)
-if [ -x "$HOME/.local/bin/pip3" ]; then
+if [ -n "$VIRTUAL_ENV" ] && [ -x "$VIRTUAL_ENV/bin/pip" ]; then
+    PIP="$VIRTUAL_ENV/bin/pip"
+elif [ -x "$HOME/.local/bin/pip3" ]; then
     PIP="$HOME/.local/bin/pip3"
 elif [ -x "$HOME/.local/bin/pip" ]; then
     PIP="$HOME/.local/bin/pip"
@@ -55,13 +57,14 @@ fi
 
 # Step 2: Find where pip put the ebuild script
 EBUILD_BIN=""
+# An active venv is checked first: pip installed into it, so any other hit is stale.
 for candidate in \
+    "${VIRTUAL_ENV:+$VIRTUAL_ENV/bin/ebuild}" \
     "$HOME/.local/bin/ebuild" \
     "/usr/local/bin/ebuild" \
     "/usr/bin/ebuild" \
-    "$(python3 -m site --user-base 2>/dev/null)/bin/ebuild" \
-    "$VIRTUAL_ENV/bin/ebuild"; do
-    if [ -x "$candidate" ]; then
+    "$(python3 -m site --user-base 2>/dev/null)/bin/ebuild"; do
+    if [ -n "$candidate" ] && [ -x "$candidate" ]; then
         EBUILD_BIN="$candidate"
         break
     fi
